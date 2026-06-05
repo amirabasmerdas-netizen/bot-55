@@ -11,7 +11,7 @@ class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
     telegram_id = Column(Integer, unique=True, nullable=False)
-    user_type = Column(String, default="normal") # 'normal', 'pro', 'owner'
+    user_type = Column(String, default="normal")
     created_at = Column(DateTime, default=datetime.utcnow)
     pro_expiry = Column(DateTime, nullable=True)
     channel_id = Column(String, nullable=True)
@@ -28,7 +28,6 @@ class ReactionBot(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-# Create tables
 Base.metadata.create_all(bind=engine)
 
 def get_db():
