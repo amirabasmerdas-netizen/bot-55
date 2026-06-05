@@ -1,6 +1,6 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, CommandHandler
-from utils import get_or_create_user, is_trial_expired
+from utils import get_or_create_user
 from datetime import datetime
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
