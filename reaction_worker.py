@@ -5,10 +5,6 @@ from telegram.ext import ApplicationBuilder, MessageHandler, filters
 from database import SessionLocal, ReactionBot
 
 async def auto_react(update: Update, context):
-    """
-    This function is triggered for every new channel post.
-    It sends a reaction using the specific bot's token.
-    """
     if update.effective_chat.type != 'channel':
         return
         
@@ -18,7 +14,6 @@ async def auto_react(update: Update, context):
 
     url = f"https://api.telegram.org/bot{token}/setMessageReaction"
     
-    # List of emojis to send
     emojis = ["🔥", "👍", "❤️", "👏", "😁", "🎉", "🤩", "💯", "⚡️", "🥰"]
     data = {
         "chat_id": chat_id,
@@ -36,13 +31,8 @@ async def auto_react(update: Update, context):
         print(f"❌ Error reacting: {e}")
 
 async def run_bot_worker(token):
-    """Initializes and runs a single bot instance."""
     app = ApplicationBuilder().token(token).build()
-    
-    # ONLY listen to channel posts
     app.add_handler(MessageHandler(filters.UpdateType.CHANNEL_POST, auto_react))
-    
-    # Run the bot (this blocks until stopped)
     await app.run_polling()
 
 async def main():
@@ -51,12 +41,10 @@ async def main():
     db.close()
     
     if not bots:
-        print("No active reaction bots found in database. Add some via the main bot admin panel.")
+        print("No active reaction bots found in database.")
         return
         
     print(f"🚀 Starting {len(bots)} reaction bots...")
-    
-    # Run all bots concurrently
     tasks = [run_bot_worker(bot.token) for bot in bots]
     await asyncio.gather(*tasks)
 
