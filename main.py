@@ -24,25 +24,25 @@ def ping():
     return "Pong!", 200
 
 def run_flask():
-    # رندر به صورت خودکار متغیر محیطی PORT را تنظیم می‌کند
     port = int(os.environ.get('PORT', 10000))
     flask_app.run(host='0.0.0.0', port=port)
 # ---------------------------------------------
 
 def main():
-    # ۱. اجرای سرور فلاسک در یک Thread جداگانه (پس‌زمینه)
+    # ۱. اجرای سرور فلاسک در پس‌زمینه
     flask_thread = Thread(target=run_flask)
+    flask_thread.daemon = True
     flask_thread.start()
     print("Flask server started for Render keep-alive...")
 
     # ۲. راه‌اندازی ربات تلگرام
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # User Flow (منوی اصلی کاربران)
+    # User Flow
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler, pattern="^(buy_pro|contact_admin|guide|start_menu)$"))
     
-    # Service Conversation (مراحل دریافت ویو و ری‌اکشن)
+    # Service Conversation
     service_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(start_service_flow, pattern="^(service_view|service_reaction)$")],
         states={
@@ -53,11 +53,11 @@ def main():
     )
     app.add_handler(service_conv)
 
-    # Admin Flow (پنل مدیریت)
+    # Admin Flow
     app.add_handler(CommandHandler("admin", admin_panel))
     
     admin_conv = ConversationHandler(
-        entry_points=[CallbackQueryHandler(admin_button_handler, pattern="^(admin_users|create_reaction_bot|list_reaction_bots|close_admin|manage_user_|upgrade_|dur_|apply_|downgrade_|delete_bot_|admin_panel_back)")],
+        entry_points=[CallbackQueryHandler(admin_button_handler, pattern="^(admin_users|create_reaction_bot|list_reaction_bots|close_admin|manage_user_|upgrade_|apply_|downgrade_|delete_bot_|admin_panel_back)")],
         states={
             AWAITING_BOT_TOKEN: [MessageHandler(filters.TEXT & ~filters.COMMAND, create_reaction_bot_save)],
         },
@@ -65,8 +65,7 @@ def main():
     )
     app.add_handler(admin_conv)
     
-    # هندلرهای اضافی برای دکمه‌های ادمین
-    app.add_handler(CallbackQueryHandler(admin_button_handler, pattern="^(admin_users|create_reaction_bot|list_reaction_bots|close_admin|manage_user_\d+|upgrade_\d+|dur_\d+_\d+|apply_\d+_\d+|downgrade_\d+|delete_bot_\d+|admin_panel_back)$"))
+    app.add_handler(CallbackQueryHandler(admin_button_handler, pattern="^(admin_users|create_reaction_bot|list_reaction_bots|close_admin|manage_user_\d+|upgrade_\d+|apply_\d+_\d+|downgrade_\d+|delete_bot_\d+|admin_panel_back)$"))
 
     print("Core Bot is running...")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
