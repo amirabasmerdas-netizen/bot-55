@@ -44,7 +44,6 @@ async def handle_channel_input(update: Update, context: ContextTypes.DEFAULT_TYP
         return AWAITING_POST
         
     elif service_type == "reaction":
-        # Fetch all active reaction bots
         db = SessionLocal()
         bots = db.query(ReactionBot).filter(ReactionBot.is_active == True).all()
         db.close()
@@ -61,13 +60,12 @@ async def handle_channel_input(update: Update, context: ContextTypes.DEFAULT_TYP
             f"✨ پس از اضافه کردن، این ربات‌ها به صورت خودکار و نامحدود به تمام پست‌های جدید کانال شما ری‌اکشن خواهند داد!"
         )
         
-        # Save channel to user profile
         db = SessionLocal()
         user = db.query(User).filter(User.telegram_id == update.effective_user.id).first()
         if user:
             user.channel_id = channel_id
             user.channel_verified = True
-            user.daily_reactions += 1 # Count as 1 usage for the setup
+            user.daily_reactions += 1
             db.commit()
         db.close()
         
@@ -101,7 +99,6 @@ async def handle_view_post(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
     await update.message.reply_text(f"✅ پست با موفقیت به {success_count} گروه ارسال شد.")
     
-    # Update limits
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == update.effective_user.id).first()
     if user:
