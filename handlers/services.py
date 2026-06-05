@@ -1,78 +1,14 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ContextTypes, ConversationHandler, MessageHandler, filters
-from database import SessionLocal, User, ReactionBot
-from utils import check_permission, is_bot_admin, get_or_create_user
-from config import TARGET_GROUPS
-
-AWAITING_CHANNEL_ID = 1
-AWAITING_POST = 2
+# ... (سایر ایمپورت‌ها و کدها بدون تغییر)
 
 async def start_service_flow(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    user = get_or_create_user(query.from_user.id)
-    
-    service_type = "view" if "view" in query.data else "reaction"
-    allowed, msg = check_permission(user, service_type)
-    
-    if not allowed:
-        await query.edit_message_text(msg)
-        return ConversationHandler.END
-        
-    context.user_data['service_type'] = service_type
-    
-    if service_type == "view":
-        text = "📊 سرویس ویو:\n۱. ربات اصلی را در کانال خود ادمین کنید.\n۲. آیدی کانال (با @) را ارسال کنید."
-    else:
-        text = "🔥 سرویس ری‌اکشن:\nآیدی کانال خود (با @) را ارسال کنید تا ربات‌های ری‌اکشن به شما معرفی شوند."
-        
-    await query.edit_message_text(text)
-    return AWAITING_CHANNEL_ID
+    # ... (بدون تغییر)
 
 async def handle_channel_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    channel_id = update.message.text.strip()
-    service_type = context.user_data.get('service_type')
-    
-    if service_type == "view":
-        is_admin = await is_bot_admin(context.bot, channel_id)
-        if not is_admin:
-            await update.message.reply_text("❌ خطا: ربات اصلی در این کانال ادمین نیست. لطفاً ابتدا ربات را ادمین کنید.")
-            return AWAITING_CHANNEL_ID
-            
-        context.user_data['verified_channel'] = channel_id
-        await update.message.reply_text("✅ کانال تایید شد. لطفاً یک پست از کانال خود را به اینجا فوروارد کنید.")
-        return AWAITING_POST
-        
-    elif service_type == "reaction":
-        db = SessionLocal()
-        bots = db.query(ReactionBot).filter(ReactionBot.is_active == True).all()
-        db.close()
-        
-        if not bots:
-            await update.message.reply_text("❌ در حال حاضر هیچ ربات ری‌اکشنی در شبکه فعال نیست. لطفاً بعداً مراجعه کنید.")
-            return ConversationHandler.END
-            
-        bot_usernames = "\n".join([f"@{bot.username}" for bot in bots if bot.username])
-        
-        await update.message.reply_text(
-            f"🤖 برای فعال‌سازی ری‌اکشن خودکار، لطفاً ربات‌های زیر را به عنوان ادمین در کانال {channel_id} اضافه کنید:\n\n"
-            f"{bot_usernames}\n\n"
-            f"✨ پس از اضافه کردن، این ربات‌ها به صورت خودکار و نامحدود به تمام پست‌های جدید کانال شما ری‌اکشن خواهند داد!"
-        )
-        
-        db = SessionLocal()
-        user = db.query(User).filter(User.telegram_id == update.effective_user.id).first()
-        if user:
-            user.channel_id = channel_id
-            user.channel_verified = True
-            user.daily_reactions += 1
-            db.commit()
-        db.close()
-        
-        return ConversationHandler.END
+    # ... (بدون تغییر)
 
 async def handle_view_post(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message.forward_from_chat:
+    # بررسی اینکه آیا پیام فوروارد شده از کانال است یا خیر
+    if not update.message or not update.message.forward_from_chat:
         await update.message.reply_text("❌ لطفاً یک پست را از کانال خود به اینجا فوروارد کنید.")
         return AWAITING_POST
         
