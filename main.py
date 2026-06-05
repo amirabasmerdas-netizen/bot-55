@@ -1,4 +1,5 @@
 import os
+import asyncio
 from flask import Flask
 from threading import Thread
 from telegram import Update
@@ -22,63 +23,67 @@ def home():
 @flask_app.route('/ping')
 def ping():
     return "Pong!", 200
+
+def run_flask():
+    port = int(os.environ.get('PORT', 10000))
+    # use_reloader=False بسیار مهم است تا با asyncio تداخل نکند
+    flask_app.run(host='0.0.0.0', port=port, use_reloader=False, debug=False)
 # -----------------------------------------------------
 
-def run_telegram_bot():
-    """این تابع ربات تلگرام را در یک Thread جداگانه (پس‌زمینه) اجرا می‌کند."""
-    print("Starting Telegram Bot...")
-    
-    # بررسی وجود توکن
+async def main():
     if not BOT_TOKEN or BOT_TOKEN == "YOUR_MAIN_BOT_TOKEN":
         print("❌ ERROR: BOT_TOKEN is not set! Please set it in Render Environment Variables.")
         return
 
-    try:
-        app = Application.builder().token(BOT_TOKEN).build()
+    print("Initializing Telegram Bot...")
+    app = Application.builder().token(BOT_TOKEN).build()
 
-        app.add_handler(CommandHandler("start", start))
-        app.add_handler(CallbackQueryHandler(button_handler, pattern=r"^(buy_pro|contact_admin|guide|start_menu)$"))
-        
-        service_conv = ConversationHandler(
-            entry_points=[CallbackQueryHandler(start_service_flow, pattern=r"^(service_view|service_reaction)$")],
-            states={
-                AWAITING_CHANNEL_ID: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_channel_input)],
-                AWAITING_POST: [MessageHandler(filters.UpdateType.CHANNEL_POST, handle_view_post)],
-            },
-            fallbacks=[CommandHandler("start", start)],
-        )
-        app.add_handler(service_conv)
-
-        app.add_handler(CommandHandler("admin", admin_panel))
-        
-        admin_conv = ConversationHandler(
-            entry_points=[CallbackQueryHandler(admin_button_handler, pattern=r"^(admin_users|create_reaction_bot|list_reaction_bots|close_admin|manage_user_|upgrade_|apply_|downgrade_|delete_bot_|admin_panel_back)")],
-            states={
-                AWAITING_BOT_TOKEN: [MessageHandler(filters.TEXT & ~filters.COMMAND, create_reaction_bot_save)],
-            },
-            fallbacks=[CommandHandler("admin", admin_panel)],
-        )
-        app.add_handler(admin_conv)
-        
-        app.add_handler(CallbackQueryHandler(admin_button_handler, pattern=r"^(admin_users|create_reaction_bot|list_reaction_bots|close_admin|manage_user_\d+|upgrade_\d+|apply_\d+_\d+|downgrade_\d+|delete_bot_\d+|admin_panel_back)$"))
-
-        print("✅ Core Bot is running...")
-        app.run_polling(allowed_updates=Update.ALL_TYPES)
-    except Exception as e:
-        print(f"❌ FATAL ERROR in Telegram Bot: {e}")
-
-def main():
-    # ۱. اجرای ربات تلگرام در پس‌زمینه
-    bot_thread = Thread(target=run_telegram_bot)
-    bot_thread.daemon = True
-    bot_thread.start()
-
-    # ۲. اجرای سرور فلاسک در Thread اصلی (بسیار مهم برای رندر)
-    port = int(os.environ.get('PORT', 10000))
-    print(f"🚀 Starting Flask server on port {port} for Render Health Check...")
+    # User Flow
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(button_handler, pattern=r"^(buy_pro|contact_admin|guide|start_menu)$"))
     
-    # use_reloader=False باید حتماً False باشد تا با Thread تداخل پیدا نکند
-    flask_app.run(host='0.0.0.0', port=port, use_reloader=False, debug=False)
+    # Service Conversation (توجه: فیلتر AWAITING_POST به filters.ALL تغییر کرده است)
+    service_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(start_service_flow, pattern=r"^(service_view|service_reaction)$")],
+        states={
+            AWAITING_CHANNEL_ID: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_channel_input)],
+            AWAITING_POST: [MessageHandler(filters.ALL, handle_view_post)], # <--- تغییر مهم
+        },
+        fallbacks=[CommandHandler("start", start)],
+    )
+    app.add_handler(service_conv)
+
+    # Admin Flow
+    app.add_handler(CommandHandler("admin", admin_panel))
+    
+    admin_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(admin_button_handler, pattern=r"^(admin_users|create_reaction_bot|list_reaction_bots|close_admin|manage_user_|upgrade_|apply_|downgrade_|delete_bot_|admin_panel_back)")],
+        states={
+            AWAITING_BOT_TOKEN: [MessageHandler(filters.TEXT & ~filters.COMMAND, create_reaction_bot_save)],
+        },
+        fallbacks=[CommandHandler("admin", admin_panel)],
+    )
+    app.add_handler(admin_conv)
+    
+    app.add_handler(CallbackQueryHandler(admin_button_handler, pattern=r"^(admin_users|create_reaction_bot|list_reaction_bots|close_admin|manage_user_\d+|upgrade_\d+|apply_\d+_\d+|downgrade_\d+|delete_bot_\d+|admin_panel_back)$"))
+
+    # راه‌اندازی استاندارد ربات تلگرام با asyncio
+    await app.initialize()
+    await app.start()
+    await app.updater.start_polling(allowed_updates=Update.ALL_TYPES)
+
+    # اجرای فلاسک در پس‌زمینه
+    flask_thread = Thread(target=run_flask)
+    flask_thread.daemon = True
+    flask_thread.start()
+    
+    print("🚀 Flask and Telegram Bot are running successfully!")
+
+    # بیدار نگه داشتن اسکریپت
+    await asyncio.Event().wait()
 
 if __name__ == "__main__":
-    main()
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("Shutting down...")
