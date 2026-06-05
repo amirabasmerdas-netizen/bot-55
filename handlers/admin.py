@@ -37,10 +37,14 @@ async def admin_button_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         await manage_user(query, int(query.data.split("_")[2]))
     elif query.data.startswith("upgrade_"):
         await show_duration_menu(query, int(query.data.split("_")[1]))
-    elif query.data.startswith("dur_"):
-        await apply_duration(query, context)
+    elif query.data.startswith("apply_"):
+        await apply_duration(query)
+    elif query.data.startswith("downgrade_"):
+        await downgrade_user(query, int(query.data.split("_")[1]))
     elif query.data.startswith("delete_bot_"):
         await delete_reaction_bot(query, int(query.data.split("_")[2]))
+    elif query.data == "admin_panel_back":
+        await admin_panel(update, context)
         
     return ConversationHandler.END
 
@@ -80,7 +84,7 @@ async def show_duration_menu(query, target_id):
     ]
     await query.edit_message_text("مدت زمان اشتراک پرو را انتخاب کنید:", reply_markup=InlineKeyboardMarkup(keyboard))
 
-async def apply_duration(query, context):
+async def apply_duration(query):
     parts = query.data.split("_")
     days = int(parts[1])
     target_id = int(parts[2])
@@ -93,6 +97,16 @@ async def apply_duration(query, context):
     db.close()
     
     await query.edit_message_text(f"✅ کاربر {target_id} با موفقیت به مدت {days} روز به Pro ارتقا یافت.")
+
+async def downgrade_user(query, target_id):
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == target_id).first()
+    user.user_type = "normal"
+    user.pro_expiry = None
+    db.commit()
+    db.close()
+    
+    await query.edit_message_text(f"✅ کاربر {target_id} به حالت عادی بازگردانده شد.")
 
 async def create_reaction_bot_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
     token = update.message.text.strip()
@@ -143,7 +157,8 @@ async def delete_reaction_bot(query, bot_id):
     db = SessionLocal()
     bot = db.query(ReactionBot).get(bot_id)
     if bot:
+        username = bot.username
         db.delete(bot)
         db.commit()
-        await query.edit_message_text(f"✅ ربات @{bot.username} حذف شد.\nاسکریپت ورکر را ری‌استارت کنید.")
+        await query.edit_message_text(f"✅ ربات @{username} حذف شد.\nاسکریپت ورکر را ری‌استارت کنید.")
     db.close()
