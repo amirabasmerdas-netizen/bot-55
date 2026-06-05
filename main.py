@@ -40,11 +40,11 @@ def main():
 
     # User Flow
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(button_handler, pattern="^(buy_pro|contact_admin|guide|start_menu)$"))
+    app.add_handler(CallbackQueryHandler(button_handler, pattern=r"^(buy_pro|contact_admin|guide|start_menu)$"))
     
     # Service Conversation
     service_conv = ConversationHandler(
-        entry_points=[CallbackQueryHandler(start_service_flow, pattern="^(service_view|service_reaction)$")],
+        entry_points=[CallbackQueryHandler(start_service_flow, pattern=r"^(service_view|service_reaction)$")],
         states={
             AWAITING_CHANNEL_ID: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_channel_input)],
             AWAITING_POST: [MessageHandler(filters.UpdateType.CHANNEL_POST, handle_view_post)],
@@ -57,7 +57,7 @@ def main():
     app.add_handler(CommandHandler("admin", admin_panel))
     
     admin_conv = ConversationHandler(
-        entry_points=[CallbackQueryHandler(admin_button_handler, pattern="^(admin_users|create_reaction_bot|list_reaction_bots|close_admin|manage_user_|upgrade_|apply_|downgrade_|delete_bot_|admin_panel_back)")],
+        entry_points=[CallbackQueryHandler(admin_button_handler, pattern=r"^(admin_users|create_reaction_bot|list_reaction_bots|close_admin|manage_user_|upgrade_|apply_|downgrade_|delete_bot_|admin_panel_back)")],
         states={
             AWAITING_BOT_TOKEN: [MessageHandler(filters.TEXT & ~filters.COMMAND, create_reaction_bot_save)],
         },
@@ -65,7 +65,8 @@ def main():
     )
     app.add_handler(admin_conv)
     
-    app.add_handler(CallbackQueryHandler(admin_button_handler, pattern="^(admin_users|create_reaction_bot|list_reaction_bots|close_admin|manage_user_\d+|upgrade_\d+|apply_\d+_\d+|downgrade_\d+|delete_bot_\d+|admin_panel_back)$"))
+    # توجه کنید که قبل از تمام رشته‌های regex حرف r قرار گرفته است
+    app.add_handler(CallbackQueryHandler(admin_button_handler, pattern=r"^(admin_users|create_reaction_bot|list_reaction_bots|close_admin|manage_user_\d+|upgrade_\d+|apply_\d+_\d+|downgrade_\d+|delete_bot_\d+|admin_panel_back)$"))
 
     print("Core Bot is running...")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
