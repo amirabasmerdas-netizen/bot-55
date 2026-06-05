@@ -1,3 +1,6 @@
+import os
+from flask import Flask
+from threading import Thread
 from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ConversationHandler
 from handlers.user import start, button_handler
@@ -9,7 +12,30 @@ from handlers.services import (
 )
 from config import BOT_TOKEN, ADMIN_ID
 
+# --- بخش فلاسک برای بیدار نگه داشتن رندر ---
+flask_app = Flask(__name__)
+
+@flask_app.route('/')
+def home():
+    return "ربات با موفقیت در حال اجراست!", 200
+
+@flask_app.route('/ping')
+def ping():
+    return "Pong!", 200
+
+def run_flask():
+    # رندر به صورت خودکار متغیر محیطی PORT را تنظیم می‌کند
+    port = int(os.environ.get('PORT', 10000))
+    flask_app.run(host='0.0.0.0', port=port)
+# ---------------------------------------------
+
 def main():
+    # ۱. اجرای سرور فلاسک در یک Thread جداگانه (پس‌زمینه)
+    flask_thread = Thread(target=run_flask)
+    flask_thread.start()
+    print("Flask server started for Render keep-alive...")
+
+    # ۲. راه‌اندازی ربات تلگرام
     app = Application.builder().token(BOT_TOKEN).build()
 
     # User Flow (منوی اصلی کاربران)
@@ -39,7 +65,7 @@ def main():
     )
     app.add_handler(admin_conv)
     
-    # هندلرهای اضافی برای دکمه‌های ادمین که نیازی به Conversation State ندارند
+    # هندلرهای اضافی برای دکمه‌های ادمین
     app.add_handler(CallbackQueryHandler(admin_button_handler, pattern="^(admin_users|create_reaction_bot|list_reaction_bots|close_admin|manage_user_\d+|upgrade_\d+|dur_\d+_\d+|apply_\d+_\d+|downgrade_\d+|delete_bot_\d+|admin_panel_back)$"))
 
     print("Core Bot is running...")
